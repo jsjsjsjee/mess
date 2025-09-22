@@ -117,7 +117,8 @@
   </div>
 
   <script>
-    const socket = io();
+const socket = io(window.location.origin, { transports: ["websocket"] });
+
     const chat = document.getElementById('chat');
     const messageInput = document.getElementById('message');
     const usernameInput = document.getElementById('username');
