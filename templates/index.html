@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Real-Time Chat</title>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f5f6fa;
+      font-family: Arial, sans-serif;
+    }
+    .chat-container {
+      max-width: 700px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: 80vh;
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #0d6efd;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    #chat {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background: #f8f9fa;
+    }
+    .message {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .msg-content {
+      flex: 1;
+    }
+    .username {
+      font-weight: bold;
+      margin-right: 5px;
+      color: #0d6efd;
+    }
+    .text {
+      color: #333;
+    }
+    .timestamp {
+      font-size: 12px;
+      color: gray;
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+    .system {
+      text-align: center;
+      font-style: italic;
+      color: gray;
+      margin: 10px 0;
+    }
+    #input-area {
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 10px;
+    }
+    #message {
+      flex: 1;
+    }
+    #username-area {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      💬 Real-Time Chat
+    </div>
+
+    <!-- Username input area -->
+    <div id="username-area">
+      <input id="username" type="text" class="form-control" placeholder="Enter your name">
+      <button class="btn btn-success" onclick="setUsername()">Set Name</button>
+    </div>
+
+    <!-- Chat messages -->
+    <div id="chat"></div>
+
+    <!-- Message input area -->
+    <div id="input-area">
+      <input id="message" type="text" class="form-control" placeholder="Type your message..." disabled>
+      <button class="btn btn-primary" onclick="sendMessage()" disabled id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const chat = document.getElementById('chat');
+    const messageInput = document.getElementById('message');
+    const usernameInput = document.getElementById('username');
+    const usernameArea = document.getElementById('username-area');
+    const sendBtn = document.getElementById('sendBtn');
+
+    let currentUser = "Anonymous";
+
+    function getAvatarColor(name) {
+      const colors = ["#f39c12","#e74c3c","#8e44ad","#27ae60","#2980b9","#d35400"];
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    function addMessage(user, msg, system=false) {
+      if(system) {
+        const div = document.createElement('div');
+        div.className = "system";
+        div.textContent = msg;
+        chat.appendChild(div);
+      } else {
+        const now = new Date();
+        const time = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        const div = document.createElement('div');
+        div.className = "message";
+
+        const avatar = document.createElement('div');
+        avatar.className = "avatar";
+        avatar.textContent = user.charAt(0).toUpperCase();
+        avatar.style.background = getAvatarColor(user);
+
+        const content = document.createElement('div');
+        content.className = "msg-content";
+        content.innerHTML = `<span class="username">${user}:</span> <span class="text">${msg}</span>`;
+
+        const timeEl = document.createElement('span');
+        timeEl.className = "timestamp";
+        timeEl.textContent = time;
+
+        div.appendChild(avatar);
+        div.appendChild(content);
+        div.appendChild(timeEl);
+
+        chat.appendChild(div);
+      }
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    socket.on('chat_message', (data) => {
+      const isSystem = (data.user === 'System');
+      addMessage(data.user, data.msg, isSystem);
+    });
+
+    function sendMessage() {
+      const msg = messageInput.value.trim();
+      if(msg) {
+        socket.emit('send_message', { user: currentUser, msg });
+        messageInput.value = "";
+      }
+    }
+
+    function setUsername() {
+      const name = usernameInput.value.trim();
+      if(name) {
+        currentUser = name;
+        usernameArea.style.display = "none"; // hide username field
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+        messageInput.focus();
+      }
+    }
+
+    messageInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
